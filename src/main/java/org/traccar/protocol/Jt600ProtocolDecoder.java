@@ -64,22 +64,22 @@ public class Jt600ProtocolDecoder extends BaseProtocolDecoder {
         position.set(Position.KEY_BLOCKED, BitUtil.check(value, 1));
 
         if (BitUtil.check(value, 2)) {
-            position.set(Position.KEY_ALARM, Position.ALARM_SOS);
+            position.addAlarm(Position.ALARM_SOS);
         }
         if (BitUtil.check(value, 3) || BitUtil.check(value, 4)) {
-            position.set(Position.KEY_ALARM, Position.ALARM_GPS_ANTENNA_CUT);
+            position.addAlarm(Position.ALARM_GPS_ANTENNA_CUT);
         }
         if (BitUtil.check(value, 4)) {
-            position.set(Position.KEY_ALARM, Position.ALARM_OVERSPEED);
+            position.addAlarm(Position.ALARM_OVERSPEED);
         }
 
         value = buf.readUnsignedByte();
 
         if (BitUtil.check(value, 2)) {
-            position.set(Position.KEY_ALARM, Position.ALARM_FATIGUE_DRIVING);
+            position.addAlarm(Position.ALARM_FATIGUE_DRIVING);
         }
         if (BitUtil.check(value, 3)) {
-            position.set(Position.KEY_ALARM, Position.ALARM_TOW);
+            position.addAlarm(Position.ALARM_TOW);
         }
 
         buf.readUnsignedByte(); // reserved
@@ -105,15 +105,9 @@ public class Jt600ProtocolDecoder extends BaseProtocolDecoder {
         double longitude = convertCoordinate(BcdUtil.readInteger(buf, 9));
 
         byte flags = buf.readByte();
-        position.setValid((flags & 0x1) == 0x1);
-        if ((flags & 0x2) == 0) {
-            latitude = -latitude;
-        }
-        position.setLatitude(latitude);
-        if ((flags & 0x4) == 0) {
-            longitude = -longitude;
-        }
-        position.setLongitude(longitude);
+        position.setValid(BitUtil.check(flags, 0));
+        position.setLatitude(BitUtil.check(flags, 1) ? latitude : -latitude);
+        position.setLongitude(BitUtil.check(flags, 2) ? longitude : -longitude);
 
         position.setSpeed(BcdUtil.readInteger(buf, 2));
         position.setCourse(buf.readUnsignedByte() * 2.0);
@@ -158,16 +152,16 @@ public class Jt600ProtocolDecoder extends BaseProtocolDecoder {
                 buf.readUnsignedInt(); // vehicle id combined
 
                 int status = buf.readUnsignedShort();
-                position.set(Position.KEY_ALARM, BitUtil.check(status, 1) ? Position.ALARM_GEOFENCE_ENTER : null);
-                position.set(Position.KEY_ALARM, BitUtil.check(status, 2) ? Position.ALARM_GEOFENCE_EXIT : null);
-                position.set(Position.KEY_ALARM, BitUtil.check(status, 3) ? Position.ALARM_POWER_CUT : null);
-                position.set(Position.KEY_ALARM, BitUtil.check(status, 4) ? Position.ALARM_VIBRATION : null);
+                position.addAlarm(BitUtil.check(status, 1) ? Position.ALARM_GEOFENCE_ENTER : null);
+                position.addAlarm(BitUtil.check(status, 2) ? Position.ALARM_GEOFENCE_EXIT : null);
+                position.addAlarm(BitUtil.check(status, 3) ? Position.ALARM_POWER_CUT : null);
+                position.addAlarm(BitUtil.check(status, 4) ? Position.ALARM_VIBRATION : null);
                 if (BitUtil.check(status, 5)) {
                     responseRequired = true;
                 }
                 position.set(Position.KEY_BLOCKED, BitUtil.check(status, 7));
-                position.set(Position.KEY_ALARM, BitUtil.check(status, 8 + 3) ? Position.ALARM_LOW_BATTERY : null);
-                position.set(Position.KEY_ALARM, BitUtil.check(status, 8 + 6) ? Position.ALARM_FAULT : null);
+                position.addAlarm(BitUtil.check(status, 8 + 3) ? Position.ALARM_LOW_BATTERY : null);
+                position.addAlarm(BitUtil.check(status, 8 + 6) ? Position.ALARM_FAULT : null);
                 position.set(Position.KEY_STATUS, status);
 
                 int battery = buf.readUnsignedByte();
@@ -386,7 +380,7 @@ public class Jt600ProtocolDecoder extends BaseProtocolDecoder {
             .expression("([AV]),")               // validity
             .number("(d+),")                     // speed
             .number("(d+),")                     // course
-            .number("d+,")                       // event source
+            .number("(d+),")                     // event source
             .number("d+,")                       // unlock verification
             .number("(d+),")                     // rfid
             .number("d+,")                       // password verification
@@ -418,6 +412,8 @@ public class Jt600ProtocolDecoder extends BaseProtocolDecoder {
 
         position.setSpeed(UnitsConverter.knotsFromMph(parser.nextDouble()));
         position.setCourse(parser.nextDouble());
+
+        position.set("eventSource", parser.nextInt());
 
         String rfid = parser.next();
         if (!rfid.equals("0000000000")) {

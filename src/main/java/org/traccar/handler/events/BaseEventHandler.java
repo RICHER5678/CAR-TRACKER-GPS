@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 - 2022 Anton Tananaev (anton@traccar.org)
+ * Copyright 2016 - 2024 Anton Tananaev (anton@traccar.org)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,33 +15,29 @@
  */
 package org.traccar.handler.events;
 
-import java.util.Map;
-
-import org.traccar.BaseDataHandler;
-import org.traccar.database.NotificationManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.traccar.model.Event;
 import org.traccar.model.Position;
 
-import jakarta.inject.Inject;
+public abstract class BaseEventHandler {
 
-public abstract class BaseEventHandler extends BaseDataHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(BaseEventHandler.class);
 
-    private NotificationManager notificationManager;
-
-    @Inject
-    public void setNotificationManager(NotificationManager notificationManager) {
-        this.notificationManager = notificationManager;
+    public interface Callback {
+        void eventDetected(Event event);
     }
 
-    @Override
-    protected Position handlePosition(Position position) {
-        Map<Event, Position> events = analyzePosition(position);
-        if (events != null && !events.isEmpty()) {
-            notificationManager.updateEvents(events);
+    public void analyzePosition(Position position, Callback callback) {
+        try {
+            onPosition(position, callback);
+        } catch (RuntimeException e) {
+            LOGGER.warn("Event handler failed", e);
         }
-        return position;
     }
 
-    protected abstract Map<Event, Position> analyzePosition(Position position);
-
+    /**
+     * Event handlers should be processed synchronously.
+     */
+    public abstract void onPosition(Position position, Callback callback);
 }

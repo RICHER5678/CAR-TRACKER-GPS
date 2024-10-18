@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 - 2022 Anton Tananaev (anton@traccar.org)
+ * Copyright 2015 - 2024 Anton Tananaev (anton@traccar.org)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,17 @@
  */
 package org.traccar.api.resource;
 
+import com.warrenstrange.googleauth.GoogleAuthenticator;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Context;
 import org.traccar.api.BaseObjectResource;
 import org.traccar.config.Config;
+import org.traccar.config.Keys;
 import org.traccar.helper.LogAction;
 import org.traccar.helper.model.UserUtil;
+import org.traccar.model.Device;
 import org.traccar.model.ManagedUser;
 import org.traccar.model.Permission;
 import org.traccar.model.User;
@@ -42,6 +45,7 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.Collection;
+import java.util.LinkedList;
 
 @Path("users")
 @Produces(MediaType.APPLICATION_JSON)
@@ -59,12 +63,21 @@ public class UserResource extends BaseObjectResource<User> {
     }
 
     @GET
-    public Collection<User> get(@QueryParam("userId") long userId) throws StorageException {
+    public Collection<User> get(
+            @QueryParam("userId") long userId, @QueryParam("deviceId") long deviceId) throws StorageException {
         if (userId > 0) {
             permissionsService.checkUser(getUserId(), userId);
             return storage.getObjects(baseClass, new Request(
                     new Columns.All(),
                     new Condition.Permission(User.class, userId, ManagedUser.class).excludeGroups()));
+        } else if (deviceId > 0) {
+            permissionsService.checkManager(getUserId());
+            var conditions = new LinkedList<Condition>();
+            conditions.add(new Condition.Permission(User.class, Device.class, deviceId).excludeGroups());
+            if (permissionsService.notAdmin(getUserId())) {
+                conditions.add(new Condition.Permission(User.class, getUserId(), ManagedUser.class).excludeGroups());
+            }
+            return storage.getObjects(baseClass, new Request(new Columns.All(), Condition.merge(conditions)));
         } else if (permissionsService.notAdmin(getUserId())) {
             return storage.getObjects(baseClass, new Request(
                     new Columns.All(),
@@ -93,15 +106,17 @@ public class UserResource extends BaseObjectResource<User> {
                     }
                 }
             } else {
-                if (!permissionsService.getServer().getRegistration()) {
+                if (UserUtil.isEmpty(storage)) {
+                    entity.setAdministrator(true);
+                } else if (!permissionsService.getServer().getRegistration()) {
                     throw new SecurityException("Registration disabled");
+                }
+                if (permissionsService.getServer().getBoolean(Keys.WEB_TOTP_FORCE.getKey())
+                        && entity.getTotpKey() == null) {
+                    throw new SecurityException("One-time password key is required");
                 }
                 UserUtil.setUserDefaults(entity, config);
             }
-        }
-
-        if (UserUtil.isEmpty(storage)) {
-            entity.setAdministrator(true);
         }
 
         entity.setId(storage.addObject(entity, new Request(new Columns.Exclude("id"))));
@@ -120,12 +135,22 @@ public class UserResource extends BaseObjectResource<User> {
 
     @Path("{id}")
     @DELETE
-    public Response remove(@PathParam("id") long id) throws StorageException {
+    public Response remove(@PathParam("id") long id) throws Exception {
         Response response = super.remove(id);
         if (getUserId() == id) {
             request.getSession().removeAttribute(SessionResource.USER_ID_KEY);
         }
         return response;
+    }
+
+    @Path("totp")
+    @PermitAll
+    @POST
+    public String generateTotpKey() throws StorageException {
+        if (!permissionsService.getServer().getBoolean(Keys.WEB_TOTP_ENABLE.getKey())) {
+            throw new SecurityException("One-time password is disabled");
+        }
+        return new GoogleAuthenticator().createCredentials().getKey();
     }
 
 }

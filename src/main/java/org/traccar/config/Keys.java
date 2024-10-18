@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2022 Anton Tananaev (anton@traccar.org)
+ * Copyright 2019 - 2024 Anton Tananaev (anton@traccar.org)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ public final class Keys {
     }
 
     /**
-     * Network interface for a the protocol. If not specified, server will bind all interfaces.
+     * Network interface for the protocol. If not specified, server will bind all interfaces.
      */
     public static final ConfigSuffix<String> PROTOCOL_ADDRESS = new StringConfigSuffix(
             ".address",
@@ -33,7 +33,7 @@ public final class Keys {
      * Port number for the protocol. Most protocols use TCP on the transport layer. Some protocols use UDP. Some
      * support both TCP and UDP.
      */
-    public static final ConfigSuffix<Integer> PROTOCOL_PORT = new IntegerConfigSuffix(
+    public static final ConfigSuffix<Integer> PROTOCOL_PORT = new PortConfigSuffix(
             ".port",
             List.of(KeyType.CONFIG));
 
@@ -293,6 +293,14 @@ public final class Keys {
             false);
 
     /**
+     * If not zero, enable buffering of incoming data to handle ordering locations. The value is threshold for
+     * buffering in milliseconds.
+     */
+    public static final ConfigKey<Long> SERVER_BUFFERING_THRESHOLD = new LongConfigKey(
+            "server.buffering.threshold",
+            List.of(KeyType.CONFIG));
+
+    /**
      * Server wide connection timeout value in seconds. See protocol timeout for more information.
      */
     public static final ConfigKey<Integer> SERVER_TIMEOUT = new IntegerConfigKey(
@@ -312,7 +320,8 @@ public final class Keys {
      */
     public static final ConfigKey<String> SERVER_STATISTICS = new StringConfigKey(
             "server.statistics",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            "https://www.traccar.org/analytics/");
 
     /**
      * Fuel drop threshold value. When fuel level drops from one position to another for more the value, an event is
@@ -339,6 +348,13 @@ public final class Keys {
             "speedLimit",
             List.of(KeyType.SERVER, KeyType.DEVICE),
             0.0);
+
+    /**
+     * Disable device sharing on the server.
+     */
+    public static final ConfigKey<Boolean> DEVICE_SHARE_DISABLE = new BooleanConfigKey(
+            "disableShare",
+            List.of(KeyType.SERVER));
 
     /**
      * Speed limit threshold multiplier. For example, if the speed limit is 100, but we only want to generate an event
@@ -382,7 +398,8 @@ public final class Keys {
      */
     public static final ConfigKey<Boolean> EVENT_IGNORE_DUPLICATE_ALERTS = new BooleanConfigKey(
             "event.ignoreDuplicateAlerts",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            true);
 
     /**
      * If set to true, invalid positions will be considered for motion logic.
@@ -457,7 +474,8 @@ public final class Keys {
      */
     public static final ConfigKey<String> DATABASE_CHANGELOG = new StringConfigKey(
             "database.changelog",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            "./schema/changelog-master.xml");
 
     /**
      * Database connection pool size. Default value is defined by the HikariCP library.
@@ -487,14 +505,6 @@ public final class Keys {
      */
     public static final ConfigKey<Boolean> DATABASE_THROTTLE_UNKNOWN = new BooleanConfigKey(
             "database.throttleUnknown",
-            List.of(KeyType.CONFIG));
-
-    /**
-     * By default, server syncs with the database if it encounters and unknown device. This flag allows to disable that
-     * behavior to improve performance in some cases.
-     */
-    public static final ConfigKey<Boolean> DATABASE_IGNORE_UNKNOWN = new BooleanConfigKey(
-            "database.ignoreUnknown",
             List.of(KeyType.CONFIG));
 
     /**
@@ -591,7 +601,7 @@ public final class Keys {
             "uid");
 
     /**
-     * LDAP attribute used as user name. Default value is 'cn'.
+     * LDAP attribute used as username. Default value is 'cn'.
      */
     public static final ConfigKey<String> LDAP_NAME_ATTRIBUTE = new StringConfigKey(
             "ldap.nameAttribute",
@@ -664,7 +674,7 @@ public final class Keys {
     /**
      * OpenID Connect Authorization URL.
      * This can usually be found in the documentation of your identity provider or by using the well-known
-     * configuration endpoint, eg. https://auth.example.com//.well-known/openid-configuration
+     * configuration endpoint, e.g. https://auth.example.com/.well-known/openid-configuration
      * Required to enable SSO if openid.issuerUrl is not set.
      */
     public static final ConfigKey<String> OPENID_AUTH_URL = new StringConfigKey(
@@ -729,7 +739,8 @@ public final class Keys {
      */
     public static final ConfigKey<String> MEDIA_PATH = new StringConfigKey(
             "media.path",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            "./media");
 
     /**
      * Optional parameter to specify network interface for web interface to bind to. By default server will bind to all
@@ -740,12 +751,13 @@ public final class Keys {
             List.of(KeyType.CONFIG));
 
     /**
-     * Web interface TCP port number. By default Traccar uses port 8082. To avoid specifying port in the browser you
+     * Web interface TCP port number. By default, Traccar uses port 8082. To avoid specifying port in the browser you
      * can set it to 80 (default HTTP port).
      */
     public static final ConfigKey<Integer> WEB_PORT = new IntegerConfigKey(
             "web.port",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            8082);
 
     /**
      * Maximum API requests per second. Above this limit requests and delayed and throttled.
@@ -763,26 +775,20 @@ public final class Keys {
             600);
 
     /**
-     * Sanitize all strings returned via API. This is needed to fix XSS issues in the old web interface. New React-based
-     * interface doesn't require this.
-     */
-    public static final ConfigKey<Boolean> WEB_SANITIZE = new BooleanConfigKey(
-            "web.sanitize",
-            List.of(KeyType.CONFIG));
-
-    /**
      * Path to the web app folder.
      */
     public static final ConfigKey<String> WEB_PATH = new StringConfigKey(
             "web.path",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            "./web");
 
     /**
      * Path to a folder with overrides. It can be used for branding to keep custom logos in a separate place.
      */
     public static final ConfigKey<String> WEB_OVERRIDE = new StringConfigKey(
             "web.override",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            "./override");
 
     /**
      * WebSocket connection timeout in milliseconds. Default timeout is 5 minutes.
@@ -836,6 +842,20 @@ public final class Keys {
             "web.cacheControl",
             List.of(KeyType.CONFIG),
             "max-age=3600,public");
+
+    /**
+     * Enable TOTP authentication on the server.
+     */
+    public static final ConfigKey<Boolean> WEB_TOTP_ENABLE = new BooleanConfigKey(
+            "totpEnable",
+            List.of(KeyType.SERVER));
+
+    /**
+     * Server attribute that indicates that TOTP authentication is required for new users.
+     */
+    public static final ConfigKey<Boolean> WEB_TOTP_FORCE = new BooleanConfigKey(
+            "totpForce",
+            List.of(KeyType.SERVER));
 
     /**
      * Host for raw data forwarding.
@@ -1151,7 +1171,17 @@ public final class Keys {
      */
     public static final ConfigKey<String> NOTIFICATOR_TYPES = new StringConfigKey(
             "notificator.types",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            "web,mail,command");
+
+    /**
+     * If the event time is too old, we should not send notifications. This parameter is the threshold value in
+     * milliseconds. Default value is 15 minutes.
+     */
+    public static final ConfigKey<Long> NOTIFICATOR_TIME_THRESHOLD = new LongConfigKey(
+            "notificator.timeThreshold",
+            List.of(KeyType.CONFIG),
+            15 * 60 * 1000L);
 
     /**
      * Traccar notification API key.
@@ -1203,8 +1233,43 @@ public final class Keys {
             List.of(KeyType.CONFIG));
 
     /**
+     * Enable user expiration email notification.
+     */
+    public static final ConfigKey<Boolean> NOTIFICATION_EXPIRATION_USER = new BooleanConfigKey(
+            "notification.expiration.user",
+            List.of(KeyType.CONFIG));
+
+    /**
+     * User expiration reminder. Value in milliseconds.
+     */
+    public static final ConfigKey<Long> NOTIFICATION_EXPIRATION_USER_REMINDER = new LongConfigKey(
+            "notification.expiration.user.reminder",
+            List.of(KeyType.CONFIG));
+
+    /**
+     * Enable device expiration email notification.
+     */
+    public static final ConfigKey<Boolean> NOTIFICATION_EXPIRATION_DEVICE = new BooleanConfigKey(
+            "notification.expiration.device",
+            List.of(KeyType.CONFIG));
+
+    /**
+     * Device expiration reminder. Value in milliseconds.
+     */
+    public static final ConfigKey<Long> NOTIFICATION_EXPIRATION_DEVICE_REMINDER = new LongConfigKey(
+            "notification.expiration.device.reminder",
+            List.of(KeyType.CONFIG));
+
+    /**
+     * Block notifications for specific users. The value should be a comma-separated list of internal user ids.
+     */
+    public static final ConfigKey<String> NOTIFICATION_BLOCK_USERS = new StringConfigKey(
+            "notification.block.users",
+            List.of(KeyType.CONFIG));
+
+    /**
      * Maximum time period for reports in seconds. Can be useful to prevent users to request unreasonably long reports.
-     * By default there is no limit.
+     * By default, there is no limit.
      */
     public static final ConfigKey<Long> REPORT_PERIOD_LIMIT = new LongConfigKey(
             "report.periodLimit",
@@ -1273,7 +1338,8 @@ public final class Keys {
      */
     public static final ConfigKey<Boolean> FILTER_ENABLE = new BooleanConfigKey(
             "filter.enable",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            true);
 
     /**
      * Filter invalid (valid field is set to false) positions.
@@ -1311,7 +1377,8 @@ public final class Keys {
      */
     public static final ConfigKey<Long> FILTER_FUTURE = new LongConfigKey(
             "filter.future",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            86400L);
 
     /**
      * Filter records with fix time in the past. The value is specified in seconds. Records that have fix time more
@@ -1368,10 +1435,17 @@ public final class Keys {
             List.of(KeyType.CONFIG));
 
     /**
-     * Filter position if the daily limit is exceeded for the device.
+     * Throttle positions if the daily limit is exceeded for the device.
      */
     public static final ConfigKey<Integer> FILTER_DAILY_LIMIT = new IntegerConfigKey(
             "filter.dailyLimit",
+            List.of(KeyType.CONFIG));
+
+    /**
+     * Throttling interval if the limit exceeded. The value is in seconds.
+     */
+    public static final ConfigKey<Integer> FILTER_DAILY_LIMIT_INTERVAL = new IntegerConfigKey(
+            "filter.dailyLimitInterval",
             List.of(KeyType.CONFIG));
 
     /**
@@ -1466,6 +1540,13 @@ public final class Keys {
             List.of(KeyType.CONFIG));
 
     /**
+     * Use linked driver id for positions if a device does not send driver id.
+     */
+    public static final ConfigKey<Boolean> PROCESSING_USE_LINKED_DRIVER = new BooleanConfigKey(
+            "processing.useLinkedDriver",
+            List.of(KeyType.CONFIG));
+
+    /**
      * Enable copying of missing attributes from last position to the current one. Might be useful if device doesn't
      * send some values in every message.
      */
@@ -1482,10 +1563,17 @@ public final class Keys {
             List.of(KeyType.CONFIG, KeyType.DEVICE));
 
     /**
-     * Enable computed attributes processing.
+     * Include device attributes in the computed attribute context.
      */
     public static final ConfigKey<Boolean> PROCESSING_COMPUTED_ATTRIBUTES_DEVICE_ATTRIBUTES = new BooleanConfigKey(
             "processing.computedAttributes.deviceAttributes",
+            List.of(KeyType.CONFIG));
+
+    /**
+     * Include last position attributes in the computed attribute context.
+     */
+    public static final ConfigKey<Boolean> PROCESSING_COMPUTED_ATTRIBUTES_LAST_ATTRIBUTES = new BooleanConfigKey(
+            "processing.computedAttributes.lastAttributes",
             List.of(KeyType.CONFIG));
 
     /**
@@ -1515,15 +1603,16 @@ public final class Keys {
      */
     public static final ConfigKey<Boolean> GEOCODER_ENABLE = new BooleanConfigKey(
             "geocoder.enable",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            true);
 
     /**
-     * Reverse geocoder type. Check reverse geocoding documentation for more info. By default (if the value is not
-     * specified) server uses Google API.
+     * Reverse geocoder type. Check reverse geocoding documentation for more info.
      */
     public static final ConfigKey<String> GEOCODER_TYPE = new StringConfigKey(
             "geocoder.type",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            "locationiq");
 
     /**
      * Geocoder server URL. Applicable only to Nominatim and Gisgraphy providers.
@@ -1533,18 +1622,12 @@ public final class Keys {
             List.of(KeyType.CONFIG));
 
     /**
-     * App id for use with Here provider.
-     */
-    public static final ConfigKey<String> GEOCODER_ID = new StringConfigKey(
-            "geocoder.id",
-            List.of(KeyType.CONFIG));
-
-    /**
      * Provider API key. Most providers require API keys.
      */
     public static final ConfigKey<String> GEOCODER_KEY = new StringConfigKey(
             "geocoder.key",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            "pk.689d849289c8c63708068b2ff1f63b2d");
 
     /**
      * Language parameter for providers that support localization (e.g. Google and Nominatim).
@@ -1572,7 +1655,8 @@ public final class Keys {
      */
     public static final ConfigKey<Boolean> GEOCODER_IGNORE_POSITIONS = new BooleanConfigKey(
             "geocoder.ignorePositions",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            true);
 
     /**
      * Boolean flag to apply reverse geocoding to invalid positions.
@@ -1594,7 +1678,8 @@ public final class Keys {
      */
     public static final ConfigKey<Boolean> GEOCODER_ON_REQUEST = new BooleanConfigKey(
             "geocoder.onRequest",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            true);
 
     /**
      * Boolean flag to enable LBS location resolution. Some devices send cell towers information and WiFi point when GPS
@@ -1606,7 +1691,7 @@ public final class Keys {
             List.of(KeyType.CONFIG));
 
     /**
-     * Provider to use for LBS location. Available options: google, mozilla and opencellid. By default opencellid is
+     * Provider to use for LBS location. Available options: google, unwired and opencellid. By default, google is
      * used. You have to supply a key that you get from corresponding provider. For more information see LBS geolocation
      * documentation.
      */
@@ -1640,6 +1725,13 @@ public final class Keys {
      */
     public static final ConfigKey<Boolean> GEOLOCATION_REUSE = new BooleanConfigKey(
             "geolocation.reuse",
+            List.of(KeyType.CONFIG));
+
+    /**
+     * Process geolocation only when Wi-Fi information is available. This makes the result more accurate.
+     */
+    public static final ConfigKey<Boolean> GEOLOCATION_REQUIRE_WIFI = new BooleanConfigKey(
+            "geolocation.requireWifi",
             List.of(KeyType.CONFIG));
 
     /**
@@ -1726,6 +1818,15 @@ public final class Keys {
             List.of(KeyType.CONFIG));
 
     /**
+     * If this parameter is set, Traccar will monitor drops in the number of stored messages. If it drops more than
+     * the threshold, it will mark service as failing for systemd. Threshold is a value from 0.0 to 1.0. For example,
+     * value 0.7 means that the number of messages in the last period is only 70% of what it was in the previous.
+     */
+    public static final ConfigKey<Double> WEB_HEALTH_CHECK_DROP_THRESHOLD = new DoubleConfigKey(
+            "web.healthCheck.dropThreshold",
+            List.of(KeyType.CONFIG));
+
+    /**
      * Sets SameSite cookie attribute value.
      * Supported options: Lax, Strict, None.
      */
@@ -1749,6 +1850,27 @@ public final class Keys {
             List.of(KeyType.CONFIG));
 
     /**
+     * Show logs from unknown devices.
+     */
+    public static final ConfigKey<Boolean> WEB_SHOW_UNKNOWN_DEVICES = new BooleanConfigKey(
+            "web.showUnknownDevices",
+            List.of(KeyType.CONFIG));
+
+    /**
+     * Enable commands for a shared device.
+     */
+    public static final ConfigKey<Boolean> WEB_SHARE_DEVICE_COMMANDS = new BooleanConfigKey(
+            "web.shareDevice.commands",
+            List.of(KeyType.CONFIG));
+
+    /**
+     * Enable reports for a shared device.
+     */
+    public static final ConfigKey<Boolean> WEB_SHARE_DEVICE_REPORTS = new BooleanConfigKey(
+            "web.shareDevice.reports",
+            List.of(KeyType.CONFIG));
+
+    /**
      * Output logging to the standard terminal output instead of a log file.
      */
     public static final ConfigKey<Boolean> LOGGER_CONSOLE = new BooleanConfigKey(
@@ -1767,7 +1889,8 @@ public final class Keys {
      */
     public static final ConfigKey<String> LOGGER_FILE = new StringConfigKey(
             "logger.file",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            "./logs/tracker-server.log");
 
     /**
      * Logging level. Default value is 'info'.
@@ -1775,7 +1898,8 @@ public final class Keys {
      */
     public static final ConfigKey<String> LOGGER_LEVEL = new StringConfigKey(
             "logger.level",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            "info");
 
     /**
      * Print full exception traces. Useful for debugging. By default shortened traces are logged.
@@ -1790,7 +1914,16 @@ public final class Keys {
      */
     public static final ConfigKey<Boolean> LOGGER_ROTATE = new BooleanConfigKey(
             "logger.rotate",
-            List.of(KeyType.CONFIG));
+            List.of(KeyType.CONFIG),
+            true);
+
+    /**
+     * If all bytes are printable characters, log network data as text instead of HEX.
+     */
+    public static final ConfigKey<Boolean> LOGGER_TEXT_PROTOCOL = new BooleanConfigKey(
+            "logger.decodeTextData",
+            List.of(KeyType.CONFIG),
+            true);
 
     /**
      * Log file rotation interval, the default rotation interval is once a day.
@@ -1811,8 +1944,8 @@ public final class Keys {
             "time,position,speed,course,accuracy,result");
 
     /**
-     * Broadcast method. Available options are "multicast" and "redis". By default (if the value is not
-     * specified or does not matches available options) server disables broadcast.
+     * Broadcast method. Available options are "multicast" and "redis". By default, (if the value is not
+     * specified or does not match available options) server disables broadcast.
      */
     public static final ConfigKey<String> BROADCAST_TYPE = new StringConfigKey(
             "broadcast.type",
@@ -1837,6 +1970,13 @@ public final class Keys {
      */
     public static final ConfigKey<Integer> BROADCAST_PORT = new IntegerConfigKey(
             "broadcast.port",
+            List.of(KeyType.CONFIG));
+
+    /**
+     * Flag to mark secondary servers. Some tasks, like scheduled reports, will be executed on the main server only.
+     */
+    public static final ConfigKey<Boolean> BROADCAST_SECONDARY = new BooleanConfigKey(
+            "broadcast.secondary",
             List.of(KeyType.CONFIG));
 
 }

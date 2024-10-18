@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 - 2022 Anton Tananaev (anton@traccar.org)
+ * Copyright 2013 - 2024 Anton Tananaev (anton@traccar.org)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,13 @@ package org.traccar.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.traccar.storage.QueryIgnore;
 import org.traccar.helper.Hashing;
 import org.traccar.storage.StorageName;
 
 import java.util.Date;
+import java.util.HashMap;
 
 @StorageName("tc_users")
 public class User extends ExtendedModel implements UserRestrictions, Disableable {
@@ -133,16 +135,6 @@ public class User extends ExtendedModel implements UserRestrictions, Disableable
         this.zoom = zoom;
     }
 
-    private boolean twelveHourFormat;
-
-    public boolean getTwelveHourFormat() {
-        return twelveHourFormat;
-    }
-
-    public void setTwelveHourFormat(boolean twelveHourFormat) {
-        this.twelveHourFormat = twelveHourFormat;
-    }
-
     private String coordinateFormat;
 
     public String getCoordinateFormat() {
@@ -251,6 +243,26 @@ public class User extends ExtendedModel implements UserRestrictions, Disableable
         this.poiLayer = poiLayer;
     }
 
+    private String totpKey;
+
+    public String getTotpKey() {
+        return totpKey;
+    }
+
+    public void setTotpKey(String totpKey) {
+        this.totpKey = totpKey;
+    }
+
+    private boolean temporary;
+
+    public boolean getTemporary() {
+        return temporary;
+    }
+
+    public void setTemporary(boolean temporary) {
+        this.temporary = temporary;
+    }
+
     @QueryIgnore
     public String getPassword() {
         return null;
@@ -293,6 +305,19 @@ public class User extends ExtendedModel implements UserRestrictions, Disableable
 
     public boolean isPasswordValid(String password) {
         return Hashing.validatePassword(password, hashedPassword, salt);
+    }
+
+    public boolean compare(User other, String... exclusions) {
+        if (!EqualsBuilder.reflectionEquals(this, other, "attributes", "hashedPassword", "salt")) {
+            return false;
+        }
+        var thisAttributes = new HashMap<>(getAttributes());
+        var otherAttributes = new HashMap<>(other.getAttributes());
+        for (String exclusion : exclusions) {
+            thisAttributes.remove(exclusion);
+            otherAttributes.remove(exclusion);
+        }
+        return thisAttributes.equals(otherAttributes);
     }
 
 }
